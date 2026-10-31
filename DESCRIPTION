@@ -1,11 +1,11 @@
 Package: tidylandmark
-Title: A Tidy Framework for Landmark Survival Analysis
+Title: Tidy Workflows for Landmark Survival Analysis
 Version: 0.0.0.9000
 Authors@R: c(
     person(given = "Chance",
            family = "Alvarado",
            role = c("aut", "cph"),
-	   comment = c(ORCID = "0000-0001-7266-6344")),
+           comment = c(ORCID = "0000-0001-7266-6344")),
     person(given = "Carson",
            family = "Richardson",
            role = c("aut", "cre", "cph"),
