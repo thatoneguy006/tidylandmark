@@ -18,3 +18,5 @@ Roxygen: list(markdown = TRUE)
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+URL: https://thatoneguy006.github.io/tidylandmark/, https://github.com/thatoneguy006/tidylandmark
+BugReports: https://github.com/thatoneguy006/tidylandmark/issues
