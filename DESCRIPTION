@@ -1,16 +1,24 @@
 Package: tidylandmark
-Title: What the Package Does (One Line, Title Case)
+Title: A Tidy Framework for Landmark Survival Analysis
 Version: 0.0.0.9000
 Authors@R: c(
     person(given = "Chance",
            family = "Alvarado",
-           role = c("aut", "cph")),
+           role = c("aut", "cph"),
+	   comment = c(ORCID = "0000-0001-7266-6344")),
     person(given = "Carson",
            family = "Richardson",
            role = c("aut", "cre", "cph"),
            email = "carson.richardson@outlook.com",
            comment = c(ORCID = "0009-0004-8710-1097")))
-Description: What the package does (one paragraph).
+Description: Provides a tidy framework for landmark survival analysis,
+    facilitating the construction of landmark-specific risk sets, 
+    incorporation of longitudinal covariates, and estimation of associations 
+    with time-to-event outcomes. Supports covariate estimation using last 
+    observation carried forward (LOCF) or linear mixed-effects models (LME),
+    alongside Cox proportional hazards and Fine-Gray competing risks regression. 
+    Offers a consistent and reproducible workflow for conducting analyses across 
+    multiple landmark times.
 License: MIT + file LICENSE
 Config/roxygen2/version: 8.1.1
 Encoding: UTF-8
