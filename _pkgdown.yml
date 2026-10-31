@@ -1,0 +1,25 @@
+
+url: https://thatoneguy006.github.io/tidylandmark/
+
+template:
+  bootstrap: 5
+  light-switch: true
+  theme: github-light
+  theme-dark: github-dark
+
+development:
+  mode: auto
+
+home:
+  title: Tidy Landmark Survival Analysis
+  description: >
+    Provides a tidy framework for landmark survival analysis,
+    facilitating the construction of landmark-specific risk sets,
+    incorporation of longitudinal covariates, and estimation of associations
+    with time-to-event outcomes. Supports covariate estimation using last
+    observation carried forward (LOCF) or linear mixed-effects models (LME),
+    alongside Cox proportional hazards and Fine-Gray competing risks regression.
+    Offers a consistent and reproducible workflow for conducting analyses across
+    multiple landmark times.
+
+
