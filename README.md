@@ -10,10 +10,13 @@ The goal of tidylandmark is to ...
 
 ## Installation
 
-You can install the development version of tidylandmark like so:
+### CRAN
+Coming soon...
 
+### Development
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+# install.packages("remotes")
+remotes::install_github("thatoneguy006/tidylandmark")
 ```
 
 ## Example

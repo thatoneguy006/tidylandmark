@@ -3,7 +3,7 @@ url: https://thatoneguy006.github.io/tidylandmark/
 
 template:
   bootstrap: 5
-  lightswitch: true
+  light-switch: true
   theme: github-light
   theme-dark: github-dark
 
