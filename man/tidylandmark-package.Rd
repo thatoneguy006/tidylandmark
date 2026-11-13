@@ -8,6 +8,17 @@
 \description{
 Provides a tidy framework for landmark survival analysis, facilitating the construction of landmark-specific risk sets, incorporation of longitudinal covariates, and estimation of associations with time-to-event outcomes. Supports covariate estimation using last observation carried forward (LOCF) or linear mixed-effects models (LME), alongside Cox proportional hazards and Fine-Gray competing risks regression. Offers a consistent and reproducible workflow for conducting analyses across multiple landmark times.
 }
+\section{Package options}{
+
+\itemize{
+\item \code{tidylandmark.progress}: \code{TRUE} or \code{FALSE}. The default for the
+\code{progress} argument of long-running functions. When unset, progress bars
+are shown only in interactive sessions, so nothing prints inside knitr,
+Quarto or \verb{R CMD check}. Set \code{options(tidylandmark.progress = FALSE)} to
+turn them off everywhere.
+}
+}
+
 \seealso{
 Useful links:
 \itemize{

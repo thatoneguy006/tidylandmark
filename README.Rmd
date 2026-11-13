@@ -1,0 +1,123 @@
+---
+output: github_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# tidylandmark
+
+<!-- badges: start -->
+
+[![R-CMD-check](https://github.com/thatoneguy006/tidylandmark/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/thatoneguy006/tidylandmark/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/thatoneguy006/tidylandmark/graph/badge.svg)](https://app.codecov.io/gh/thatoneguy006/tidylandmark)
+
+<!-- badges: end -->
+
+Provides a tidy framework for landmark survival analysis, facilitating
+the construction of landmark-specific risk sets, incorporation of
+longitudinal covariates, and estimation of associations with
+time-to-event outcomes. Supports covariate estimation using last
+observation carried forward (LOCF) or linear mixed-effects models (LME),
+alongside Cox proportional hazards and Fine-Gray competing risks
+regression. Offers a consistent and reproducible workflow for conducting
+analyses across multiple landmark times.
+
+## Installation
+
+### CRAN
+
+Coming soon...
+
+### Development
+
+You can install the development version of tidylandmark from
+[GitHub](https://github.com/) with:
+
+``` r
+# install.packages("pak")
+pak::pak("thatoneguy006/tidylandmark")
+```
+
+## Use
+
+We illustrate the package's functionality with a basic example using
+data from the Mayo Clinic primary biliary cirrhosis trial. This data was
+originally bundled with the `survival` package as
+[`survival::pbcseq`](https://rdrr.io/cran/survival/man/pbcseq.html). We
+have included a copy of this data split across two datasets,
+`pbcseq_baseline` and `pbcseq_visits` for baseline/status and follow-up
+visits, respectively.
+
+The data files include information on **312** randomized patients.
+Patients are followed after enrollment and have statuses of `0` =
+*Censored*, `1` = *Received Transplant*, or`2` = *Died*. A sample
+of baseline patient characteristics and final status status is shown
+below:
+
+```{r}
+library(tidylandmark)
+head(pbcseq_baseline)
+```
+
+Laboratory values and clinical statuses monitored longitudinally are included in
+`pbcseq_visits`. A total of **1,945** observations for the **312** randomized
+patients are included, with a sample shown below: 
+
+```{r}
+head(pbcseq_visits)
+```
+
+### Construct Landmark Risk Sets
+
+Data preparation for landmarking is fist performed with the `landmark_data`
+function, which constructs the various landmark risk sets and included baseline
+covariates. 
+
+Here, we specify a landmark analysis setup where we aim to estimate from 
+landmarks at approximately one through five years post-enrollment. In this 
+example, we are interested in the six-month period after each landmark time and
+thus specify `horizon = 180`.
+
+A summary of the landmark analysis set-up is printed along the output, 
+indicating the landmark times, number at risk at the landmark time, and the
+number censored or having events before the horizon, if specified.
+
+```{r}
+
+# Construct landmark risk sets
+lm_dat <- pbcseq_baseline |>
+  landmark_data(
+    id = id,
+    time = futime,
+    status = status,
+    landmarks = 365 * 1:5,
+    horizon = 180
+  )
+
+# Print summary of risk set specifications
+lm_dat
+
+```
+
+A `tidy` method is also available yielding a tibble containing landmark risk set 
+summaries.
+```{r}
+
+# Pull risk set summaries as a tibble
+lm_dat |>
+  tidy(show_proportion = TRUE)
+
+```

@@ -151,3 +151,52 @@ as_tibble.landmark_tbl <- function(x, ...) {
   class(x) <- c("tbl_df", "tbl", "data.frame")
   x
 }
+
+#' Tidy a landmark dataset for additional summarization
+#'
+#' Returns a tibble with the summary of the landmark configuration and
+#' per-landmark outcome counts (at risk, censored, and events by cause).
+#' Automatically updates after `dplyr::filter()` or `[` subsetting.
+
+#'
+#' @param x A `landmark_tbl`, as returned by [landmark_data()].
+#' @param status_labels Should status labels be shown in tibble if `status`
+#'  was provided as factor? Default FALSE.
+#' @param show_proportion Indicate proportion of full cohort at risk? Default
+#'  FALSE.
+#' @param ... Ignored.
+#'
+#' @returns A tibble
+#' @exportS3Method generics::tidy
+tidy.landmark_tbl <- function(
+    x,
+    status_labels = FALSE,
+    show_proportion = FALSE,
+    ...
+  ){
+  cfg <- landmark_config(x)
+
+  # Only tidy when the metadata and reserved columns are intact
+  # (e.g. not after select()-ing away `.status`).
+  if (!is.null(cfg) && all(lm_reserved_cols %in% names(x))) {
+    df <- lm_counts(x) |> tibble::as_tibble()
+  }
+
+  # If status_labels should be set as column labels, update
+  if (status_labels && !is.null(cfg$status_labels)) {
+    rename_map <- rlang::set_names(
+      paste0('n_event_', cfg$event_codes),
+      paste0('n_', make.names(cfg$status_labels[-1])))
+    df <- df |> dplyr::rename(!!!rename_map)
+  }
+
+  # If proportion should be shown, include
+  if (show_proportion) {
+    df <- df |>
+      dplyr::mutate(prop_at_risk = .data$n_at_risk / cfg$n_subjects) |>
+      dplyr::relocate(.data$prop_at_risk, .after = .data$landmark)
+  }
+
+  df
+}
+
