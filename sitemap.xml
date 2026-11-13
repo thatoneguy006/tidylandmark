@@ -1,10 +1,20 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://thatoneguy006.github.io/tidylandmark/404.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/CODE_OF_CONDUCT.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/CONTRIBUTING.html</loc></url>
 <url><loc>https://thatoneguy006.github.io/tidylandmark/LICENSE-text.html</loc></url>
 <url><loc>https://thatoneguy006.github.io/tidylandmark/LICENSE.html</loc></url>
 <url><loc>https://thatoneguy006.github.io/tidylandmark/authors.html</loc></url>
 <url><loc>https://thatoneguy006.github.io/tidylandmark/index.html</loc></url>
 <url><loc>https://thatoneguy006.github.io/tidylandmark/news/index.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/as_tibble.landmark_tbl.html</loc></url>
 <url><loc>https://thatoneguy006.github.io/tidylandmark/reference/index.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/landmark_data.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/pbcseq_baseline.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/pbcseq_visits.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/print.landmark_tbl.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/reexports.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/tidy.landmark_tbl.html</loc></url>
+<url><loc>https://thatoneguy006.github.io/tidylandmark/reference/tidylandmark-package.html</loc></url>
 </urlset>
 

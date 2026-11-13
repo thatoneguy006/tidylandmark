@@ -61,7 +61,8 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>The goal of tidylandmark is to …</p>
+<!-- badges: end -->
+<p>Provides a tidy framework for landmark survival analysis, facilitating the construction of landmark-specific risk sets, incorporation of longitudinal covariates, and estimation of associations with time-to-event outcomes. Supports covariate estimation using last observation carried forward (LOCF) or linear mixed-effects models (LME), alongside Cox proportional hazards and Fine-Gray competing risks regression. Offers a consistent and reproducible workflow for conducting analyses across multiple landmark times.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -73,18 +74,104 @@
 <div class="section level3">
 <h3 id="development">Development<a class="anchor" aria-label="anchor" href="#development"></a>
 </h3>
+<p>You can install the development version of tidylandmark from <a href="https://github.com/" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"thatoneguy006/tidylandmark"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"thatoneguy006/tidylandmark"</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+<h2 id="use">Use<a class="anchor" aria-label="anchor" href="#use"></a>
 </h2>
-<p>This is a basic example which shows you how to solve a common problem:</p>
+<p>We illustrate the package’s functionality with a basic example using data from the Mayo Clinic primary biliary cirrhosis trial. This data was originally bundled with the <code>survival</code> package as <a href="https://rdrr.io/cran/survival/man/pbcseq.html" class="external-link"><code>survival::pbcseq</code></a>. We have included a copy of this data split across two datasets, <code>pbcseq_baseline</code> and <code>pbcseq_visits</code> for baseline/status and follow-up visits, respectively.</p>
+<p>The data files include information on <strong>312</strong> randomized patients. Patients are followed after enrollment and have statuses of <code>0</code> = <em>Censored</em>, <code>1</code> = <em>Received Transplant</em>, or<code>2</code> = <em>Died</em>. A sample of baseline patient characteristics and final status status is shown below:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://thatoneguy006.github.io/tidylandmark/">tidylandmark</a></span><span class="op">)</span></span>
-<span><span class="co">## basic example code</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">pbcseq_baseline</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   id trt      age sex futime status</span></span>
+<span><span class="co">#&gt; 1  1   1 58.76523   f    400      2</span></span>
+<span><span class="co">#&gt; 2  2   1 56.44627   f   5169      0</span></span>
+<span><span class="co">#&gt; 3  3   1 70.07255   m   1012      2</span></span>
+<span><span class="co">#&gt; 4  4   1 54.74059   f   1925      2</span></span>
+<span><span class="co">#&gt; 5  5   0 38.10541   f   1505      1</span></span>
+<span><span class="co">#&gt; 6  6   0 66.25873   f   2503      2</span></span></code></pre></div>
+<p>Laboratory values and clinical statuses monitored longitudinally are included in <code>pbcseq_visits</code>. A total of <strong>1,945</strong> observations for the <strong>312</strong> randomized patients are included, with a sample shown below:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">pbcseq_visits</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   id day ascites hepato spiders edema bili chol albumin alk.phos   ast platelet</span></span>
+<span><span class="co">#&gt; 1  1   0       1      1       1     1 14.5  261    2.60     1718 138.0      190</span></span>
+<span><span class="co">#&gt; 2  1 192       1      1       1     1 21.3   NA    2.94     1612   6.2      183</span></span>
+<span><span class="co">#&gt; 3  2   0       0      1       1     0  1.1  302    4.14     7395 113.5      221</span></span>
+<span><span class="co">#&gt; 4  2 182       0      1       1     0  0.8   NA    3.60     2107 139.5      188</span></span>
+<span><span class="co">#&gt; 5  2 365       0      1       1     0  1.0   NA    3.55     1711 144.2      161</span></span>
+<span><span class="co">#&gt; 6  2 768       0      1       1     0  1.9   NA    3.92     1365 144.2      122</span></span>
+<span><span class="co">#&gt;   protime stage</span></span>
+<span><span class="co">#&gt; 1    12.2     4</span></span>
+<span><span class="co">#&gt; 2    11.2     4</span></span>
+<span><span class="co">#&gt; 3    10.6     3</span></span>
+<span><span class="co">#&gt; 4    11.0     3</span></span>
+<span><span class="co">#&gt; 5    11.6     3</span></span>
+<span><span class="co">#&gt; 6    10.6     3</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="construct-landmark-risk-sets">Construct Landmark Risk Sets<a class="anchor" aria-label="anchor" href="#construct-landmark-risk-sets"></a>
+</h3>
+<p>Data preparation for landmarking is fist performed with the <code>landmark_data</code> function, which constructs the various landmark risk sets and included baseline covariates.</p>
+<p>Here, we specify a landmark analysis setup where we aim to estimate from landmarks at approximately one through five years post-enrollment. In this example, we are interested in the six-month period after each landmark time and thus specify <code>horizon = 180</code>.</p>
+<p>A summary of the landmark analysis set-up is printed along the output, indicating the landmark times, number at risk at the landmark time, and the number censored or having events before the horizon, if specified.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># Construct landmark risk sets</span></span>
+<span><span class="va">lm_dat</span> <span class="op">&lt;-</span> <span class="va">pbcseq_baseline</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/landmark_data.html">landmark_data</a></span><span class="op">(</span></span>
+<span>    id <span class="op">=</span> <span class="va">id</span>,</span>
+<span>    time <span class="op">=</span> <span class="va">futime</span>,</span>
+<span>    status <span class="op">=</span> <span class="va">status</span>,</span>
+<span>    landmarks <span class="op">=</span> <span class="fl">365</span> <span class="op">*</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,</span>
+<span>    horizon <span class="op">=</span> <span class="fl">180</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Print summary of risk set specifications</span></span>
+<span><span class="va">lm_dat</span></span>
+<span><span class="co">#&gt; &lt;landmark_tbl&gt; 5 landmark(s): 365, 730, 1095, 1460, 1825</span></span>
+<span><span class="co">#&gt; Horizon: 180 (relative to each landmark)</span></span>
+<span><span class="co">#&gt; Subjects: 290 at risk in current rows (312 in source data)</span></span>
+<span><span class="co">#&gt; Source columns: id = id, time = futime, status = status</span></span>
+<span><span class="co">#&gt;  landmark n_at_risk n_censored n_event_1 n_event_2</span></span>
+<span><span class="co">#&gt;       365       290        285         1         4</span></span>
+<span><span class="co">#&gt;       730       278        260         4        14</span></span>
+<span><span class="co">#&gt;      1095       245        237         0         8</span></span>
+<span><span class="co">#&gt;      1460       225        218         2         5</span></span>
+<span><span class="co">#&gt;      1825       202        194         3         5</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; # A tibble: 1,240 × 8</span></span>
+<span><span class="co">#&gt;      .id .landmark .time .status .horizon   trt   age sex  </span></span>
+<span><span class="co">#&gt;    &lt;int&gt;     &lt;dbl&gt; &lt;dbl&gt;   &lt;int&gt;    &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;fct&gt;</span></span>
+<span><span class="co">#&gt;  1     1       365    35       2      180     1  58.8 f    </span></span>
+<span><span class="co">#&gt;  2     2       365   180       0      180     1  56.4 f    </span></span>
+<span><span class="co">#&gt;  3     3       365   180       0      180     1  70.1 m    </span></span>
+<span><span class="co">#&gt;  4     4       365   180       0      180     1  54.7 f    </span></span>
+<span><span class="co">#&gt;  5     5       365   180       0      180     0  38.1 f    </span></span>
+<span><span class="co">#&gt;  6     6       365   180       0      180     0  66.3 f    </span></span>
+<span><span class="co">#&gt;  7     7       365   180       0      180     0  55.5 f    </span></span>
+<span><span class="co">#&gt;  8     8       365   180       0      180     0  53.1 f    </span></span>
+<span><span class="co">#&gt;  9     9       365   180       0      180     1  42.5 f    </span></span>
+<span><span class="co">#&gt; 10    11       365   180       0      180     0  53.7 f    </span></span>
+<span><span class="co">#&gt; # ℹ 1,230 more rows</span></span></code></pre></div>
+<p>A <code>tidy</code> method is also available yielding a tibble containing landmark risk set summaries.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># Pull risk set summaries as a tibble</span></span>
+<span><span class="va">lm_dat</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span>show_proportion <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 5 × 6</span></span>
+<span><span class="co">#&gt;   landmark prop_at_risk n_at_risk n_censored n_event_1 n_event_2</span></span>
+<span><span class="co">#&gt;      &lt;dbl&gt;        &lt;dbl&gt;     &lt;int&gt;      &lt;int&gt;     &lt;int&gt;     &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1      365        0.929       290        285         1         4</span></span>
+<span><span class="co">#&gt; 2      730        0.891       278        260         4        14</span></span>
+<span><span class="co">#&gt; 3     1095        0.785       245        237         0         8</span></span>
+<span><span class="co">#&gt; 4     1460        0.721       225        218         2         5</span></span>
+<span><span class="co">#&gt; 5     1825        0.647       202        194         3         5</span></span></code></pre></div>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -103,6 +190,13 @@
 </ul>
 </div>
 
+<div class="community">
+<h2 data-toc-skip>Community</h2>
+<ul class="list-unstyled">
+<li><a href="CONTRIBUTING.html">Contributing guide</a></li>
+<li><a href="CODE_OF_CONDUCT.html">Code of conduct</a></li>
+</ul>
+</div>
 
 <div class="citation">
 <h2 data-toc-skip>Citation</h2>
