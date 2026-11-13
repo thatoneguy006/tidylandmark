@@ -28,3 +28,14 @@ Suggests:
 Config/testthat/edition: 3
 URL: https://thatoneguy006.github.io/tidylandmark/, https://github.com/thatoneguy006/tidylandmark
 BugReports: https://github.com/thatoneguy006/tidylandmark/issues
+Depends: 
+    R (>= 4.1.0)
+Imports: 
+    cli,
+    dplyr (>= 1.1.0),
+    generics,
+    purrr (>= 1.0.0),
+    rlang (>= 1.1.0),
+    tibble (>= 3.2.0),
+    tidyselect (>= 1.2.0)
+LazyData: true
