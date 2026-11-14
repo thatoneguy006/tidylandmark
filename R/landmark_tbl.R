@@ -127,7 +127,7 @@ print.landmark_tbl <- function(x, ...) {
   cfg <- landmark_config(x)
   # Only show the summary when the metadata and reserved columns are intact
   # (e.g. not after select()-ing away `.status`).
-  if (!is.null(cfg) && all(lm_reserved_cols %in% names(x))) {
+  if (lm_is_intact(x)) {
     writeLines(lm_header(x, cfg))
     print(as.data.frame(lm_counts(x)), row.names = FALSE)
     cat("\n")
@@ -152,51 +152,93 @@ as_tibble.landmark_tbl <- function(x, ...) {
   x
 }
 
-#' Tidy a landmark dataset for additional summarization
+#' Tidy a landmark dataset
 #'
-#' Returns a tibble with the summary of the landmark configuration and
-#' per-landmark outcome counts (at risk, censored, and events by cause).
-#' Automatically updates after `dplyr::filter()` or `[` subsetting.
-
+#' Returns the per-landmark outcome counts that [print.landmark_tbl()] shows,
+#' as a tibble with one row per landmark: the number at risk, the number
+#' censored within the horizon, and the number of events of each type. Counts
+#' are recomputed from the current rows, so they follow `dplyr::filter()` and
+#' `[` subsetting.
 #'
 #' @param x A `landmark_tbl`, as returned by [landmark_data()].
-#' @param status_labels Should status labels be shown in tibble if `status`
-#'  was provided as factor? Default FALSE.
-#' @param show_proportion Indicate proportion of full cohort at risk? Default
-#'  FALSE.
-#' @param ... Ignored.
+#' @param status_labels If `TRUE` and `status` was supplied to
+#'   [landmark_data()] as a factor, name the event columns after the factor
+#'   levels (for example `n_relapse`, `n_death`) instead of the integer codes
+#'   (`n_event_1`, `n_event_2`). Levels are made syntactic with [make.names()].
+#'   When `status` was numeric there are no labels to use, so the columns keep
+#'   their code names and a warning is given. Default `FALSE`.
+#' @param show_proportion If `TRUE`, add `prop_at_risk`: the number at risk
+#'   divided by the number of subjects in the source data. Default `FALSE`.
+#' @param ... Must be empty. Present for compatibility with the generic.
 #'
-#' @returns A tibble
+#' @returns A tibble with columns `landmark`, `prop_at_risk` (only when
+#'   `show_proportion = TRUE`), `n_at_risk`, `n_censored`, and one event-count
+#'   column per event type.
+#'
+#' @examples
+#' subjects <- data.frame(
+#'   patient_id    = 1:10,
+#'   followup_days = c(20, 30, 48, 65, 85, 110, 145, 190, 250, 270),
+#'   event         = c(1, 2, 1, 2, 0, 1, 2, 1, 0, 1)
+#' )
+#' lm_dat <- landmark_data(
+#'   subjects, patient_id, followup_days, event,
+#'   landmarks = c(30, 60, 90), horizon = 180
+#' )
+#' tidy(lm_dat)
+#' tidy(lm_dat, show_proportion = TRUE)
+#'
+#' # With a factor status, event columns can be named after its levels
+#' subjects$event <- factor(
+#'   subjects$event, levels = 0:2, labels = c("censored", "relapse", "death")
+#' )
+#' lm_fac <- landmark_data(
+#'   subjects, patient_id, followup_days, event,
+#'   landmarks = c(30, 60, 90), horizon = 180
+#' )
+#' tidy(lm_fac, status_labels = TRUE)
 #' @exportS3Method generics::tidy
-tidy.landmark_tbl <- function(
-    x,
-    status_labels = FALSE,
-    show_proportion = FALSE,
-    ...
-  ){
+tidy.landmark_tbl <- function(x,
+                              status_labels = FALSE,
+                              show_proportion = FALSE,
+                              ...) {
+  call <- rlang::current_env()
+  rlang::check_dots_empty(call = call)
+  lm_check_flag(status_labels, "status_labels", call)
+  lm_check_flag(show_proportion, "show_proportion", call)
+  # Unlike print(), tidy() errors when the object is broken: returning a
+  # half-built table would be worse than failing loudly.
+  lm_check_intact(x, call = call)
   cfg <- landmark_config(x)
 
-  # Only tidy when the metadata and reserved columns are intact
-  # (e.g. not after select()-ing away `.status`).
-  if (!is.null(cfg) && all(lm_reserved_cols %in% names(x))) {
-    df <- lm_counts(x) |> tibble::as_tibble()
+  out <- lm_counts(x)
+
+  if (status_labels) {
+    if (is.null(cfg$status_labels)) {
+      cli::cli_warn(
+        c(
+          "{.code status_labels = TRUE} has no effect because {.arg status} was numeric.",
+          "i" = "Supply {.arg status} to {.fn landmark_data} as a factor to label the event columns."
+        )
+      )
+    } else {
+      # cfg$status_labels is named by code ("0", "1", ...), so index by code
+      # rather than by position.
+      old_names <- paste0("n_event_", cfg$event_codes)
+      new_names <- paste0(
+        "n_", make.names(cfg$status_labels[as.character(cfg$event_codes)])
+      )
+      lm_check_label_names(new_names, old_names, names(out), call)
+      # rename() takes new_name = old_name pairs; set_names() builds them.
+      out <- dplyr::rename(out, !!!rlang::set_names(old_names, new_names))
+    }
   }
 
-  # If status_labels should be set as column labels, update
-  if (status_labels && !is.null(cfg$status_labels)) {
-    rename_map <- rlang::set_names(
-      paste0('n_event_', cfg$event_codes),
-      paste0('n_', make.names(cfg$status_labels[-1])))
-    df <- df |> dplyr::rename(!!!rename_map)
-  }
-
-  # If proportion should be shown, include
   if (show_proportion) {
-    df <- df |>
+    out <- out |>
       dplyr::mutate(prop_at_risk = .data$n_at_risk / cfg$n_subjects) |>
-      dplyr::relocate(.data$prop_at_risk, .after = .data$landmark)
+      dplyr::relocate("prop_at_risk", .after = "landmark")
   }
 
-  df
+  out
 }
-

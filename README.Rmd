@@ -112,8 +112,9 @@ lm_dat
 
 ```
 
-A `tidy` method is also available yielding a tibble containing landmark risk set 
+A `tidy` method is also available yielding a tibble containing landmark risk set
 summaries.
+
 ```{r}
 
 # Pull risk set summaries as a tibble

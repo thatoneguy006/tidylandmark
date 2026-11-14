@@ -10,6 +10,71 @@
 # Column names that tidylandmark creates and needs to function.
 lm_reserved_cols <- c(".id", ".landmark", ".time", ".status", ".horizon")
 
+#' Is `x` still a usable landmark_tbl?
+#'
+#' TRUE when the configuration attribute exists and every reserved column is
+#' present. dplyr verbs keep the attribute, but `select()` can drop reserved
+#' columns, so both are checked.
+#' @noRd
+lm_is_intact <- function(x) {
+  !is.null(landmark_config(x)) && all(lm_reserved_cols %in% names(x))
+}
+
+#' Error unless `x` is an intact landmark_tbl.
+#' @noRd
+lm_check_intact <- function(x, arg = "x", call = rlang::caller_env()) {
+  if (!inherits(x, "landmark_tbl")) {
+    cli::cli_abort(
+      c(
+        "{.arg {arg}} must be a {.cls landmark_tbl}, not {.cls {class(x)}}.",
+        "i" = "Create one with {.fn landmark_data}."
+      ),
+      call = call
+    )
+  }
+  if (!lm_is_intact(x)) {
+    missing_cols <- setdiff(lm_reserved_cols, names(x))
+    problem <- if (length(missing_cols) > 0L) {
+      "Reserved column{?s} {.field {missing_cols}} {?is/are} missing."
+    } else {
+      "Its {.field landmark_config} attribute is missing."
+    }
+    cli::cli_abort(
+      c(
+        "{.arg {arg}} is no longer a valid {.cls landmark_tbl}.",
+        "x" = problem,
+        "i" = "Avoid dropping reserved columns, or rebuild with {.fn landmark_data}."
+      ),
+      call = call
+    )
+  }
+  invisible(x)
+}
+
+#' Check that label-based column names are usable
+#'
+#' `new` are the proposed names, `old` the names they replace and `existing`
+#' all current column names. Errors if two labels give the same name or a
+#' label clashes with another column (e.g. a level called "censored").
+#' @noRd
+lm_check_label_names <- function(new, old, existing, call = rlang::caller_env()) {
+  clash <- unique(c(
+    new[duplicated(new)],
+    intersect(new, setdiff(existing, old))
+  ))
+  if (length(clash) > 0L) {
+    cli::cli_abort(
+      c(
+        "Can't name event columns after the {.arg status} levels.",
+        "x" = "Column name{?s} {.field {clash}} would not be unique.",
+        "i" = "Rename the factor levels, or use {.code status_labels = FALSE}."
+      ),
+      call = call
+    )
+  }
+  invisible(new)
+}
+
 #' Resolve a tidy-select argument to exactly one column name
 #'
 #' Uses tidyselect so `id`, `time` and `status` accept the same syntax as
