@@ -2,26 +2,57 @@
 % Please edit documentation in R/landmark_tbl.R
 \name{tidy.landmark_tbl}
 \alias{tidy.landmark_tbl}
-\title{Tidy a landmark dataset for additional summarization}
+\title{Tidy a landmark dataset}
 \usage{
 \method{tidy}{landmark_tbl}(x, status_labels = FALSE, show_proportion = FALSE, ...)
 }
 \arguments{
 \item{x}{A \code{landmark_tbl}, as returned by \code{\link[=landmark_data]{landmark_data()}}.}
 
-\item{status_labels}{Should status labels be shown in tibble if \code{status}
-was provided as factor? Default FALSE.}
+\item{status_labels}{If \code{TRUE} and \code{status} was supplied to
+\code{\link[=landmark_data]{landmark_data()}} as a factor, name the event columns after the factor
+levels (for example \code{n_relapse}, \code{n_death}) instead of the integer codes
+(\code{n_event_1}, \code{n_event_2}). Levels are made syntactic with \code{\link[=make.names]{make.names()}}.
+When \code{status} was numeric there are no labels to use, so the columns keep
+their code names and a warning is given. Default \code{FALSE}.}
 
-\item{show_proportion}{Indicate proportion of full cohort at risk? Default
-FALSE.}
+\item{show_proportion}{If \code{TRUE}, add \code{prop_at_risk}: the number at risk
+divided by the number of subjects in the source data. Default \code{FALSE}.}
 
-\item{...}{Ignored.}
+\item{...}{Must be empty. Present for compatibility with the generic.}
 }
 \value{
-A tibble
+A tibble with columns \code{landmark}, \code{prop_at_risk} (only when
+\code{show_proportion = TRUE}), \code{n_at_risk}, \code{n_censored}, and one event-count
+column per event type.
 }
 \description{
-Returns a tibble with the summary of the landmark configuration and
-per-landmark outcome counts (at risk, censored, and events by cause).
-Automatically updates after \code{dplyr::filter()} or \code{[} subsetting.
+Returns the per-landmark outcome counts that \code{\link[=print.landmark_tbl]{print.landmark_tbl()}} shows,
+as a tibble with one row per landmark: the number at risk, the number
+censored within the horizon, and the number of events of each type. Counts
+are recomputed from the current rows, so they follow \code{dplyr::filter()} and
+\code{[} subsetting.
+}
+\examples{
+subjects <- data.frame(
+  patient_id    = 1:10,
+  followup_days = c(20, 30, 48, 65, 85, 110, 145, 190, 250, 270),
+  event         = c(1, 2, 1, 2, 0, 1, 2, 1, 0, 1)
+)
+lm_dat <- landmark_data(
+  subjects, patient_id, followup_days, event,
+  landmarks = c(30, 60, 90), horizon = 180
+)
+tidy(lm_dat)
+tidy(lm_dat, show_proportion = TRUE)
+
+# With a factor status, event columns can be named after its levels
+subjects$event <- factor(
+  subjects$event, levels = 0:2, labels = c("censored", "relapse", "death")
+)
+lm_fac <- landmark_data(
+  subjects, patient_id, followup_days, event,
+  landmarks = c(30, 60, 90), horizon = 180
+)
+tidy(lm_fac, status_labels = TRUE)
 }

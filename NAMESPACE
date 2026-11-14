@@ -7,9 +7,13 @@ export(augment)
 export(glance)
 export(landmark_data)
 export(tidy)
-importFrom(generics,augment)
-importFrom(generics,glance)
-importFrom(generics,tidy)
-importFrom(rlang,"%||%")
-importFrom(rlang,.data)
-importFrom(rlang,.env)
+importFrom(generics,
+  augment,
+  glance,
+  tidy
+)
+importFrom(rlang,
+  "%||%",
+  .data,
+  .env
+)
