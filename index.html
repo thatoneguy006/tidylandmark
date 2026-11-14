@@ -84,7 +84,7 @@
 <h2 id="use">Use<a class="anchor" aria-label="anchor" href="#use"></a>
 </h2>
 <p>We illustrate the package’s functionality with a basic example using data from the Mayo Clinic primary biliary cirrhosis trial. This data was originally bundled with the <code>survival</code> package as <a href="https://rdrr.io/cran/survival/man/pbcseq.html" class="external-link"><code>survival::pbcseq</code></a>. We have included a copy of this data split across two datasets, <code>pbcseq_baseline</code> and <code>pbcseq_visits</code> for baseline/status and follow-up visits, respectively.</p>
-<p>The data files include information on <strong>312</strong> randomized patients. Patients are followed after enrollment and have statuses of <code>0</code> = <em>Censored</em>, <code>1</code> = <em>Received Transplant</em>, or<code>2</code> = <em>Died</em>. A sample of baseline patient characteristics and final status status is shown below:</p>
+<p>The data files include information on <strong>312</strong> randomized patients. Patients are followed after enrollment and have statuses of <code>0</code> = <em>Censored</em>, <code>1</code> = <em>Received Transplant</em>, or<code>2</code> = <em>Died</em>. A sample of baseline patient characteristics and final status is shown below:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://thatoneguy006.github.io/tidylandmark/">tidylandmark</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">pbcseq_baseline</span><span class="op">)</span></span>
@@ -115,9 +115,9 @@
 <div class="section level3">
 <h3 id="construct-landmark-risk-sets">Construct Landmark Risk Sets<a class="anchor" aria-label="anchor" href="#construct-landmark-risk-sets"></a>
 </h3>
-<p>Data preparation for landmarking is fist performed with the <code>landmark_data</code> function, which constructs the various landmark risk sets and included baseline covariates.</p>
+<p>Data preparation for landmarking is first performed with the <code>landmark_data</code> function, which constructs the various landmark risk sets and included baseline covariates.</p>
 <p>Here, we specify a landmark analysis setup where we aim to estimate from landmarks at approximately one through five years post-enrollment. In this example, we are interested in the six-month period after each landmark time and thus specify <code>horizon = 180</code>.</p>
-<p>A summary of the landmark analysis set-up is printed along the output, indicating the landmark times, number at risk at the landmark time, and the number censored or having events before the horizon, if specified.</p>
+<p>A summary of the landmark analysis set-up is printed along with the output, indicating the landmark times, number at risk at the landmark time, and the number censored or having events before the horizon, if specified.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co"># Construct landmark risk sets</span></span>

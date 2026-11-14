@@ -39,7 +39,7 @@ visits, respectively.
 The data files include information on **312** randomized patients.
 Patients are followed after enrollment and have statuses of `0` =
 *Censored*, `1` = *Received Transplant*, or`2` = *Died*. A sample of
-baseline patient characteristics and final status status is shown below:
+baseline patient characteristics and final status is shown below:
 
 ``` r
 
@@ -79,7 +79,7 @@ head(pbcseq_visits)
 
 ### Construct Landmark Risk Sets
 
-Data preparation for landmarking is fist performed with the
+Data preparation for landmarking is first performed with the
 `landmark_data` function, which constructs the various landmark risk
 sets and included baseline covariates.
 
@@ -88,9 +88,10 @@ landmarks at approximately one through five years post-enrollment. In
 this example, we are interested in the six-month period after each
 landmark time and thus specify `horizon = 180`.
 
-A summary of the landmark analysis set-up is printed along the output,
-indicating the landmark times, number at risk at the landmark time, and
-the number censored or having events before the horizon, if specified.
+A summary of the landmark analysis set-up is printed along with the
+output, indicating the landmark times, number at risk at the landmark
+time, and the number censored or having events before the horizon, if
+specified.
 
 ``` r
 
@@ -170,5 +171,5 @@ lm_dat |>
 - [`print(`*`<landmark_tbl>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/print.landmark_tbl.md)
   : Print a landmark dataset
 - [`tidy(`*`<landmark_tbl>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/tidy.landmark_tbl.md)
-  : Tidy a landmark dataset for additional summarization
+  : Tidy a landmark dataset
 

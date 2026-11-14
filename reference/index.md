@@ -15,4 +15,4 @@
 - [`print(`*`<landmark_tbl>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/print.landmark_tbl.md)
   : Print a landmark dataset
 - [`tidy(`*`<landmark_tbl>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/tidy.landmark_tbl.md)
-  : Tidy a landmark dataset for additional summarization
+  : Tidy a landmark dataset
