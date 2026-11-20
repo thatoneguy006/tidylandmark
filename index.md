@@ -38,7 +38,7 @@ visits, respectively.
 
 The data files include information on **312** randomized patients.
 Patients are followed after enrollment and have statuses of `0` =
-*Censored*, `1` = *Received Transplant*, or`2` = *Died*. A sample of
+*Censored*, `1` = *Received Transplant*, or `2` = *Died*. A sample of
 baseline patient characteristics and final status is shown below:
 
 ``` r
@@ -95,7 +95,6 @@ specified.
 
 ``` r
 
-
 # Construct landmark risk sets
 lm_dat <- pbcseq_baseline |>
   landmark_data(
@@ -105,6 +104,9 @@ lm_dat <- pbcseq_baseline |>
     landmarks = 365 * 1:5,
     horizon = 180
   )
+```
+
+``` r
 
 # Print summary of risk set specifications
 lm_dat
@@ -140,7 +142,6 @@ risk set summaries.
 
 ``` r
 
-
 # Pull risk set summaries as a tibble
 lm_dat |>
   tidy(show_proportion = TRUE)
@@ -152,4 +153,62 @@ lm_dat |>
 #> 3     1095        0.785       245        237         0         8
 #> 4     1460        0.721       225        218         2         5
 #> 5     1825        0.647       202        194         3         5
+```
+
+### Add Longitudinal Covariates
+
+[`add_landmark_covariates()`](https://thatoneguy006.github.io/tidylandmark/reference/add_landmark_covariates.md)
+attaches each patient’s pre-landmark measurements from `pbcseq_visits`
+to every landmark risk set. Variables listed in `locf` use the last
+observation carried forward. Variables listed in `lme` use a
+subject-specific prediction from a linear mixed-effects model
+([`lme4::lmer()`](https://rdrr.io/pkg/lme4/man/lmer.html)), fitted
+separately at each landmark.
+
+``` r
+
+# Add longitudinal covariates to the landmark risk sets
+lm_cov <- lm_dat |>
+  add_landmark_covariates(
+    longitudinal_data = dplyr::mutate(pbcseq_visits, log_bili = log(bili)),
+    id = id,
+    time = day,
+    locf = c(ascites, edema),
+    lme = c(log_bili, albumin),
+    lme_args = list(adjust = ~ age)
+  )
+#> ℹ Ignored 32 rows of `longitudinal_data` whose `id` is not in `landmark_data`.
+```
+
+``` r
+
+# Inspect the risk sets
+lm_cov
+#> <landmark_tbl> 5 landmark(s): 365, 730, 1095, 1460, 1825
+#> Horizon: 180 (relative to each landmark)
+#> Subjects: 290 at risk in current rows (312 in source data)
+#> Source columns: id = id, time = futime, status = status
+#> Derived covariates: ascites (LOCF), edema (LOCF), log_bili (LME, adjusted ~age), albumin (LME, adjusted ~age)
+#>  landmark n_at_risk n_censored n_event_1 n_event_2
+#>       365       290        285         1         4
+#>       730       278        260         4        14
+#>      1095       245        237         0         8
+#>      1460       225        218         2         5
+#>      1825       202        194         3         5
+#> 
+#> # A tibble: 1,240 × 12
+#>      .id .landmark .time .status .horizon   trt   age sex   ascites edema
+#>    <int>     <dbl> <dbl>   <int>    <dbl> <int> <dbl> <fct>   <int> <dbl>
+#>  1     1       365    35       2      180     1  58.8 f           1   1  
+#>  2     2       365   180       0      180     1  56.4 f           0   0  
+#>  3     3       365   180       0      180     1  70.1 m           0   0.5
+#>  4     4       365   180       0      180     1  54.7 f           0   0.5
+#>  5     5       365   180       0      180     0  38.1 f           0   0  
+#>  6     6       365   180       0      180     0  66.3 f           0   0  
+#>  7     7       365   180       0      180     0  55.5 f           0   0  
+#>  8     8       365   180       0      180     0  53.1 f           0   0  
+#>  9     9       365   180       0      180     1  42.5 f           0   0  
+#> 10    11       365   180       0      180     0  53.7 f           0   0  
+#> # ℹ 1,230 more rows
+#> # ℹ 2 more variables: log_bili <dbl>, albumin <dbl>
 ```

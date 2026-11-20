@@ -8,7 +8,8 @@ post-landmark `horizon`. The result stacks all landmarks into one long
 table with one row per eligible subject-landmark pair.
 
 Longitudinal covariates are not handled here. Attach them afterwards
-with `add_landmark_covariates()`.
+with
+[`add_landmark_covariates()`](https://thatoneguy006.github.io/tidylandmark/reference/add_landmark_covariates.md).
 
 ## Usage
 
