@@ -216,6 +216,75 @@
 <span><span class="co">#&gt; # ℹ 1,230 more rows</span></span>
 <span><span class="co">#&gt; # ℹ 2 more variables: log_bili &lt;dbl&gt;, albumin &lt;dbl&gt;</span></span></code></pre></div>
 </div>
+<div class="section level3">
+<h3 id="fit-the-landmark-models">Fit the Landmark Models<a class="anchor" aria-label="anchor" href="#fit-the-landmark-models"></a>
+</h3>
+<p><code><a href="reference/fit_landmark.html">fit_landmark()</a></code> fits a separate survival model at each landmark. Supply a one-sided survival formula; the outcome is built internally from each risk set’s follow-up time and status. Here we model death (<code>cause = 2</code>). Because transplant is a competing event, the default Cox model estimates cause-specific hazard ratios.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Fit a cause-specific Cox model at every landmark</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">lm_cov</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/fit_landmark.html">fit_landmark</a></span><span class="op">(</span></span>
+<span>    formula <span class="op">=</span> <span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">log_bili</span> <span class="op">+</span> <span class="va">albumin</span> <span class="op">+</span> <span class="va">edema</span>,</span>
+<span>    cause <span class="op">=</span> <span class="fl">2</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit</span></span>
+<span><span class="co">#&gt; &lt;landmark_fit&gt; Cause-specific Cox model for cause 2 at 5 landmark(s)</span></span>
+<span><span class="co">#&gt; Formula: ~age + log_bili + albumin + edema</span></span>
+<span><span class="co">#&gt; Horizon: 180 (relative to each landmark)</span></span>
+<span><span class="co">#&gt;  landmark n_eligible n_model n_event n_competing fit_status</span></span>
+<span><span class="co">#&gt;       365        290     290       4           1         ok</span></span>
+<span><span class="co">#&gt;       730        278     278      14           4         ok</span></span>
+<span><span class="co">#&gt;      1095        245     245       8           0         ok</span></span>
+<span><span class="co">#&gt;      1460        225     225       5           2         ok</span></span>
+<span><span class="co">#&gt;      1825        202     202       5           3         ok</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Standard errors treat LME-derived covariates (log_bili, albumin) as known.</span></span>
+<span><span class="co">#&gt; Use tidy() for coefficients and summary() for hazard ratios.</span></span></code></pre></div>
+<p><code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> returns one row per landmark and term, with the number of events behind each estimate and the <code>origin</code> of each term (baseline, LOCF or LME). Landmarks that could not be estimated keep a row with their status, so they don’t silently drop out of the results.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Hazard ratios with 95% confidence intervals</span></span>
+<span><span class="va">fit</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span>exponentiate <span class="op">=</span> <span class="cn">TRUE</span>, conf.int <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.landmark</span>, <span class="va">term</span>, <span class="va">estimate</span>, </span>
+<span>                <span class="va">conf.low</span>, <span class="va">conf.high</span>, <span class="va">origin</span>, <span class="va">n_event</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; ℹ Standard errors treat LME-derived covariates as known, so they understate</span></span>
+<span><span class="co">#&gt;   uncertainty.</span></span>
+<span><span class="co">#&gt;   Bootstrap intervals that account for this are planned for a future release.</span></span>
+<span><span class="co">#&gt; This message is displayed once per session.</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 7</span></span>
+<span><span class="co">#&gt;   .landmark term     estimate conf.low conf.high origin   n_event</span></span>
+<span><span class="co">#&gt;       &lt;dbl&gt; &lt;chr&gt;       &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;      &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1       365 age         1.07  0.971         1.18 baseline       4</span></span>
+<span><span class="co">#&gt; 2       365 log_bili    1.63  0.557         4.79 lme            4</span></span>
+<span><span class="co">#&gt; 3       365 albumin     0.128 0.000182     90.0  lme            4</span></span>
+<span><span class="co">#&gt; 4       365 edema      12.4   0.731       209.   locf           4</span></span>
+<span><span class="co">#&gt; 5       730 age         1.06  0.999         1.11 baseline      14</span></span>
+<span><span class="co">#&gt; 6       730 log_bili    3.67  1.98          6.80 lme           14</span></span></code></pre></div>
+<p>Fine-Gray subdistribution hazard models use <code>model = "finegray"</code>, and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> is a shortcut for the exponentiated <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> output. The native <code><a href="https://rdrr.io/pkg/survival/man/coxph.html" class="external-link">survival::coxph()</a></code> fit for each landmark is kept in <code>fit$models</code>.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Fine-Gray model for death, with transplant as a competing event</span></span>
+<span><span class="va">lm_cov</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/fit_landmark.html">fit_landmark</a></span><span class="op">(</span><span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">log_bili</span> <span class="op">+</span> <span class="va">albumin</span> <span class="op">+</span> <span class="va">edema</span>, </span>
+<span>               model <span class="op">=</span> <span class="st">"finegray"</span>, cause <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.landmark</span>, <span class="va">term</span>, <span class="va">estimate</span>, <span class="va">conf.low</span>, <span class="va">conf.high</span>, <span class="va">.fit_status</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: 1 of 5 landmark models did not fit cleanly.</span></span>
+<span><span class="co">#&gt; • Landmark 1095 (warning): no competing events: estimates equal the Cox model</span></span>
+<span><span class="co">#&gt; ℹ Unestimable and failed landmarks have no estimates. See `$model_info` for</span></span>
+<span><span class="co">#&gt;   details.</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 6</span></span>
+<span><span class="co">#&gt;   .landmark term     estimate conf.low conf.high .fit_status</span></span>
+<span><span class="co">#&gt;       &lt;dbl&gt; &lt;chr&gt;       &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;      </span></span>
+<span><span class="co">#&gt; 1       365 age         1.07  0.974         1.17 ok         </span></span>
+<span><span class="co">#&gt; 2       365 log_bili    1.63  0.910         2.93 ok         </span></span>
+<span><span class="co">#&gt; 3       365 albumin     0.128 0.000370     44.3  ok         </span></span>
+<span><span class="co">#&gt; 4       365 edema      12.4   0.514       297.   ok         </span></span>
+<span><span class="co">#&gt; 5       730 age         1.06  0.995         1.12 ok         </span></span>
+<span><span class="co">#&gt; 6       730 log_bili    3.67  2.08          6.48 ok</span></span></code></pre></div>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

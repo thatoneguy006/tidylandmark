@@ -213,6 +213,99 @@ lm_cov
 #> # ℹ 2 more variables: log_bili <dbl>, albumin <dbl>
 ```
 
+### Fit the Landmark Models
+
+[`fit_landmark()`](https://thatoneguy006.github.io/tidylandmark/reference/fit_landmark.md)
+fits a separate survival model at each landmark. Supply a one-sided
+survival formula; the outcome is built internally from each risk set’s
+follow-up time and status. Here we model death (`cause = 2`). Because
+transplant is a competing event, the default Cox model estimates
+cause-specific hazard ratios.
+
+``` r
+
+# Fit a cause-specific Cox model at every landmark
+fit <- lm_cov |>
+  fit_landmark(
+    formula = ~ age + log_bili + albumin + edema,
+    cause = 2
+  )
+
+fit
+#> <landmark_fit> Cause-specific Cox model for cause 2 at 5 landmark(s)
+#> Formula: ~age + log_bili + albumin + edema
+#> Horizon: 180 (relative to each landmark)
+#>  landmark n_eligible n_model n_event n_competing fit_status
+#>       365        290     290       4           1         ok
+#>       730        278     278      14           4         ok
+#>      1095        245     245       8           0         ok
+#>      1460        225     225       5           2         ok
+#>      1825        202     202       5           3         ok
+#> 
+#> Standard errors treat LME-derived covariates (log_bili, albumin) as known.
+#> Use tidy() for coefficients and summary() for hazard ratios.
+```
+
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) returns one
+row per landmark and term, with the number of events behind each
+estimate and the `origin` of each term (baseline, LOCF or LME).
+Landmarks that could not be estimated keep a row with their status, so
+they don’t silently drop out of the results.
+
+``` r
+
+# Hazard ratios with 95% confidence intervals
+fit |>
+  tidy(exponentiate = TRUE, conf.int = TRUE) |>
+  dplyr::select(.landmark, term, estimate, 
+                conf.low, conf.high, origin, n_event) |> 
+  head()
+#> ℹ Standard errors treat LME-derived covariates as known, so they understate
+#>   uncertainty.
+#>   Bootstrap intervals that account for this are planned for a future release.
+#> This message is displayed once per session.
+#> # A tibble: 6 × 7
+#>   .landmark term     estimate conf.low conf.high origin   n_event
+#>       <dbl> <chr>       <dbl>    <dbl>     <dbl> <chr>      <int>
+#> 1       365 age         1.07  0.971         1.18 baseline       4
+#> 2       365 log_bili    1.63  0.557         4.79 lme            4
+#> 3       365 albumin     0.128 0.000182     90.0  lme            4
+#> 4       365 edema      12.4   0.731       209.   locf           4
+#> 5       730 age         1.06  0.999         1.11 baseline      14
+#> 6       730 log_bili    3.67  1.98          6.80 lme           14
+```
+
+Fine-Gray subdistribution hazard models use `model = "finegray"`, and
+[`summary()`](https://rdrr.io/r/base/summary.html) is a shortcut for the
+exponentiated [`tidy()`](https://generics.r-lib.org/reference/tidy.html)
+output. The native
+[`survival::coxph()`](https://rdrr.io/pkg/survival/man/coxph.html) fit
+for each landmark is kept in `fit$models`.
+
+``` r
+
+# Fine-Gray model for death, with transplant as a competing event
+lm_cov |>
+  fit_landmark(~ age + log_bili + albumin + edema, 
+               model = "finegray", cause = 2) |>
+  summary() |>
+  dplyr::select(.landmark, term, estimate, conf.low, conf.high, .fit_status) |> 
+  head()
+#> Warning: 1 of 5 landmark models did not fit cleanly.
+#> • Landmark 1095 (warning): no competing events: estimates equal the Cox model
+#> ℹ Unestimable and failed landmarks have no estimates. See `$model_info` for
+#>   details.
+#> # A tibble: 6 × 6
+#>   .landmark term     estimate conf.low conf.high .fit_status
+#>       <dbl> <chr>       <dbl>    <dbl>     <dbl> <chr>      
+#> 1       365 age         1.07  0.974         1.17 ok         
+#> 2       365 log_bili    1.63  0.910         2.93 ok         
+#> 3       365 albumin     0.128 0.000370     44.3  ok         
+#> 4       365 edema      12.4   0.514       297.   ok         
+#> 5       730 age         1.06  0.995         1.12 ok         
+#> 6       730 log_bili    3.67  2.08          6.48 ok
+```
+
 # Package index
 
 ## All functions
@@ -221,6 +314,10 @@ lm_cov
   : Attach pre-landmark covariates to a landmark dataset
 - [`as_tibble(`*`<landmark_tbl>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/as_tibble.landmark_tbl.md)
   : Convert a landmark dataset to a plain tibble
+- [`bootstrap_landmark()`](https://thatoneguy006.github.io/tidylandmark/reference/bootstrap_landmark.md)
+  : Two-stage bootstrap for propagating uncertainty from LME predictions
+- [`fit_landmark()`](https://thatoneguy006.github.io/tidylandmark/reference/fit_landmark.md)
+  : Fit a survival model at every landmark
 - [`landmark_covariates()`](https://thatoneguy006.github.io/tidylandmark/reference/landmark_covariates.md)
   [`landmark_lme_fits()`](https://thatoneguy006.github.io/tidylandmark/reference/landmark_covariates.md)
   : Inspect how derived covariates were made
@@ -232,8 +329,14 @@ lm_cov
 - [`pbcseq_visits`](https://thatoneguy006.github.io/tidylandmark/reference/pbcseq_visits.md)
   : Mayo Clinic Primary Biliary Cirrhosis Follow-up Visit Data for
   Randomized Patients
+- [`print(`*`<landmark_fit>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/print.landmark_fit.md)
+  : Print a landmark model fit
 - [`print(`*`<landmark_tbl>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/print.landmark_tbl.md)
   : Print a landmark dataset
+- [`summary(`*`<landmark_fit>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/summary.landmark_fit.md)
+  : Summarise a landmark model fit
+- [`tidy(`*`<landmark_fit>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/tidy.landmark_fit.md)
+  : Tidy a landmark model fit
 - [`tidy(`*`<landmark_tbl>`*`)`](https://thatoneguy006.github.io/tidylandmark/reference/tidy.landmark_tbl.md)
   : Tidy a landmark dataset
 

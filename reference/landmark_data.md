@@ -43,7 +43,8 @@ landmark_data(data, id, time, status, landmarks, horizon = NULL)
 
   - **numeric**: `0` for censoring and positive integers `1, 2, ...` for
     event types. Codes other than the target cause are treated as
-    competing events by `fit_landmark()`.
+    competing events by
+    [`fit_landmark()`](https://thatoneguy006.github.io/tidylandmark/reference/fit_landmark.md).
 
   - **factor**: the first level is censoring and later levels are event
     types. They are recoded to `0, 1, 2, ...` in level order. The
