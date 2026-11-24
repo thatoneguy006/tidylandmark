@@ -173,8 +173,12 @@ add_landmark_covariates <- function(landmark_data,
                                     lookback = NULL,
                                     lme_args = list(),
                                     names = NULL,
-                                    progress = getOption("tidylandmark.progress", interactive())) {
+                                    progress = getOption("tidylandmark.progress", interactive())
+                                   ) {
   call <- rlang::current_env()
+
+  # Check boot attribute
+  boot <- if (is.null(attributes(landmark_data)$boot)) {FALSE} else {TRUE}
 
   # ---- 1. Validate containers and scalar arguments -------------------------
   lm_check_intact(landmark_data, "landmark_data", call)
@@ -219,6 +223,7 @@ add_landmark_covariates <- function(landmark_data,
 
   locf_names <- lm_output_names(locf_sel, "locf", names, call = call)
   lme_names  <- lm_output_names(lme_sel, "lme", names, call = call)
+
   out_names  <- c(locf_names, lme_names)
   lm_check_unique_names(out_names, call)
   lm_check_collisions(out_names, base::names(landmark_data), call)
@@ -262,12 +267,21 @@ add_landmark_covariates <- function(landmark_data,
   if (length(lme_sel) > 0L) {
     adjust_vars <- setdiff(all.vars(lme_opts$adjust %||% ~1), ".t")
     lm_rows <- tibble::as_tibble(landmark_data)[c(".id", ".landmark", adjust_vars)]
+
+    # If bootstrapping, append bootstrap IDs
+    if (boot){
+      lm_rows <- tibble::as_tibble(landmark_data)[c(".id", ".boot_id", ".landmark", adjust_vars)]
+    } else {
+      lm_rows <- tibble::as_tibble(landmark_data)[c(".id", ".landmark", adjust_vars)]
+    }
+
     lme_out <- lm_lme_all(
       lm_rows, ids = ids, times = times,
       values = purrr::map(unname(lme_sel), \(v) long[[v]]),
       include_at_landmark = include_at_landmark,
       opts = lme_opts,
-      progress = progress
+      progress = progress,
+      boot = boot
     )
     lm_warn_lme_issues(lme_out, unname(lme_sel))
   }
@@ -368,7 +382,7 @@ lm_locf_one <- function(keys, id, time, value, var,
 #' vectors. Returns one list(value, details) per variable, like lm_locf_one().
 #' @noRd
 lm_lme_all <- function(lm_rows, ids, times, values, include_at_landmark,
-                       opts, progress = FALSE) {
+                       opts, progress = FALSE, boot) {
   landmarks <- sort(unique(lm_rows$.landmark))
   # Every (variable, landmark) pair, variable varying slowest.
   grid_var <- rep(seq_along(values), each = length(landmarks))
@@ -379,7 +393,7 @@ lm_lme_all <- function(lm_rows, ids, times, values, include_at_landmark,
     \(k, s) {
       lm_lme_fit_one(
         lm_rows, ids = ids, times = times, value = values[[k]], s = s,
-        include_at_landmark = include_at_landmark, opts = opts
+        include_at_landmark = include_at_landmark, opts = opts, boot = boot
       )
     },
     .progress = lm_progress_arg(progress, "Fitting mixed models")
@@ -404,7 +418,7 @@ lm_lme_all <- function(lm_rows, ids, times, values, include_at_landmark,
 #' prediction, the predictions, and a one-row diagnostics tibble.
 #' @noRd
 lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
-                           include_at_landmark, opts) {
+                           include_at_landmark, opts, boot) {
   at_s <- lm_rows[lm_rows$.landmark == s, , drop = FALSE]
   at_s$.row <- which(lm_rows$.landmark == s)
   adjust_vars <- setdiff(base::names(lm_rows), c(".id", ".landmark"))
@@ -418,9 +432,9 @@ lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
   # Adjustment values come from the subject's landmark row; subjects missing
   # any of them can't be predicted, so they are left out of the fit too.
   if (length(adjust_vars) > 0L) {
-    obs <- dplyr::left_join(
-      obs, at_s[c(".id", adjust_vars)], by = ".id", relationship = "many-to-one"
-    )
+
+    obs <- dplyr::left_join(obs, at_s[c(".id", adjust_vars)], by = ".id")
+
     obs <- obs[stats::complete.cases(obs[adjust_vars]), , drop = FALSE]
   }
 
@@ -430,6 +444,7 @@ lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
   time_scale <- if (length(t_centred) > 1L) stats::sd(t_centred) else NA_real_
   if (!is.finite(time_scale) || time_scale <= 0) time_scale <- 1
   obs$.t <- t_centred / time_scale
+
   # lmer groups on .id; character keeps fit data and newdata consistent.
   obs$.id <- as.character(obs$.id)
 
@@ -474,7 +489,8 @@ lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
     )))
   }
 
-  formula <- lm_lme_formula(opts$adjust, opts$random_slope)
+  formula <- lm_lme_formula(opts$adjust, opts$random_slope, boot = boot)
+
   res <- lm_quiet_lmer(formula, obs, REML = opts$REML, control = opts$control)
   if (is.null(res$fit)) {
     return(failed(res$error))
@@ -510,16 +526,24 @@ lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
 
 #' Build `.value ~ .t + <adjust> + (1 | .id)` or `(1 + .t | .id)`
 #' @noRd
-lm_lme_formula <- function(adjust = NULL, random_slope = FALSE) {
+lm_lme_formula <- function(adjust = NULL, random_slope = FALSE, boot = boot){
   fixed <- quote(.t)
   if (!is.null(adjust)) {
     fixed <- call("+", fixed, rlang::f_rhs(adjust))
   }
-  re <- if (random_slope) quote((1 + .t | .id)) else quote((1 | .id))
+
+  # If bootstrapping, update ID column, otherwise use global ID column
+  if (boot){
+    re <- if (random_slope) quote((1 + .t | .boot_id)) else quote((1 | .boot_id))
+  } else {
+    re <- if (random_slope) quote((1 + .t | .id)) else quote((1 | .id))
+  }
+
   # The adjust formula's environment lets terms like splines::ns(age, 3) or a
   # user-defined function resolve as they would in a normal lmer() call.
   env <- if (is.null(adjust)) baseenv() else rlang::f_env(adjust)
-  rlang::new_formula(quote(.value), call("+", fixed, re), env = env)
+  form_out <- rlang::new_formula(quote(.value), call("+", fixed, re), env = env)
+
 }
 
 #' Fit lmer, collecting warnings and messages instead of printing them
