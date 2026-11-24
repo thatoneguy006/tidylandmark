@@ -405,33 +405,45 @@ lm_lme_all <- function(lm_rows, ids, times, values, include_at_landmark,
 #' @noRd
 lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
                            include_at_landmark, opts) {
-  at_s <- lm_rows[lm_rows$.landmark == s, , drop = FALSE]
-  at_s$.row <- which(lm_rows$.landmark == s)
+  landmark_rows <- which(lm_rows$.landmark == s)
+  at_s <- lm_rows[landmark_rows, , drop = FALSE]
   adjust_vars <- setdiff(base::names(lm_rows), c(".id", ".landmark"))
+
+  # Random-effect key, one per landmark row. Normally a subject has one row per
+  # landmark, so the key is just its id and the model is unchanged. In a
+  # bootstrap sample (bootstrap_landmark()) a subject drawn k times has k rows;
+  # make.unique() gives them "12", "12#1", ... so each copy gets its own random
+  # effect instead of being pooled into one subject with duplicated data.
+  re_key <- make.unique(as.character(at_s$.id), sep = "#")
+  has_dups <- anyDuplicated(at_s$.id) > 0L
 
   # History of subjects at risk at s, up to the landmark.
   in_window <- if (include_at_landmark) times <= s else times < s
   keep <- in_window & !is.na(value) & ids %in% at_s$.id
-  obs <- tibble::tibble(.id = ids[keep], .obs_time = times[keep], .value = value[keep])
+  obs <- tibble::tibble(.id = ids[keep], .time = times[keep], .value = value[keep])
   obs <- dplyr::distinct(obs)
 
-  # Adjustment values come from the subject's landmark row; subjects missing
-  # any of them can't be predicted, so they are left out of the fit too.
+  # Copy each subject's history once per landmark row, attaching that row's
+  # random-effect key and adjustment values. Without duplicated subjects this
+  # is many-to-one, which keeps the original safety check. Subjects missing an
+  # adjustment value can't be predicted, so they are left out of the fit too.
+  key_col <- make.unique(c(names(at_s), ".re_key"))[ncol(at_s) + 1L]
+  at_s[[key_col]] <- re_key
+  obs <- dplyr::left_join(
+    obs, at_s[c(".id", key_col, adjust_vars)], by = ".id",
+    relationship = if (has_dups) "many-to-many" else "many-to-one"
+  )
   if (length(adjust_vars) > 0L) {
-    obs <- dplyr::left_join(
-      obs, at_s[c(".id", adjust_vars)], by = ".id", relationship = "many-to-one"
-    )
     obs <- obs[stats::complete.cases(obs[adjust_vars]), , drop = FALSE]
   }
 
   # Centre at the landmark and rescale. Predictions at .t = 0 don't depend on
   # the scale, but lmer converges more reliably on unit-scale time.
-  t_centred <- obs$.obs_time - s
+  t_centred <- obs$.time - s
   time_scale <- if (length(t_centred) > 1L) stats::sd(t_centred) else NA_real_
   if (!is.finite(time_scale) || time_scale <= 0) time_scale <- 1
   obs$.t <- t_centred / time_scale
-  # lmer groups on .id; character keeps fit data and newdata consistent.
-  obs$.id <- as.character(obs$.id)
+  obs$.id <- obs[[key_col]]
 
   per_subject <- table(obs$.id)
   n_subjects  <- length(per_subject)
@@ -445,8 +457,8 @@ lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
     n_subjects    = n_subjects,
     n_obs         = nrow(obs),
     median_obs    = if (n_subjects > 0L) stats::median(as.numeric(per_subject)) else NA_real_,
-    time_min      = if (nrow(obs) > 0L) min(obs$.obs_time) else NA_real_,
-    time_max      = if (nrow(obs) > 0L) max(obs$.obs_time) else NA_real_,
+    time_min      = if (nrow(obs) > 0L) min(obs$.time) else NA_real_,
+    time_max      = if (nrow(obs) > 0L) max(obs$.time) else NA_real_,
     time_scale    = time_scale,
     slope         = NA_real_,
     var_intercept = NA_real_,
@@ -481,9 +493,10 @@ lm_lme_fit_one <- function(lm_rows, ids, times, value, s,
   }
   fit <- res$fit
 
-  newdata <- at_s[at_s$.id %in% obs$.id, , drop = FALSE]
-  rows <- newdata$.row
-  newdata$.id <- as.character(newdata$.id)
+  fitted_rows <- re_key %in% obs$.id
+  newdata <- at_s[fitted_rows, , drop = FALSE]
+  newdata$.id <- re_key[fitted_rows]
+  rows <- landmark_rows[fitted_rows]
   newdata$.t <- 0
   pred <- unname(stats::predict(fit, newdata = newdata, re.form = NULL))
 

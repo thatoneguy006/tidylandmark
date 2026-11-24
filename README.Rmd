@@ -146,3 +146,47 @@ lm_cov <- lm_dat |>
 # Inspect the risk sets
 lm_cov
 ```
+
+### Fit the Landmark Models
+
+`fit_landmark()` fits a separate survival model at each landmark. Supply a one-sided survival formula; the outcome is built internally from each
+risk set's follow-up time and status. Here we model death (`cause = 2`).
+Because transplant is a competing event, the default Cox model estimates
+cause-specific hazard ratios.
+
+```{r}
+# Fit a cause-specific Cox model at every landmark
+fit <- lm_cov |>
+  fit_landmark(
+    formula = ~ age + log_bili + albumin + edema,
+    cause = 2
+  )
+
+fit
+```
+
+`tidy()` returns one row per landmark and term, with the number of
+events behind each estimate and the `origin` of each term (baseline,
+LOCF or LME). Landmarks that could not be estimated keep a row with
+their status, so they don't silently drop out of the results.
+
+```{r}
+# Hazard ratios with 95% confidence intervals
+fit |>
+  tidy(exponentiate = TRUE, conf.int = TRUE) |>
+  dplyr::select(.landmark, term, estimate, 
+                conf.low, conf.high, origin, n_event) |> 
+  head()
+```
+
+Fine-Gray subdistribution hazard models use `model = "finegray"`, and `summary()` is a shortcut for the exponentiated `tidy()` output. The native `survival::coxph()` fit for each landmark is kept in `fit$models`.
+
+```{r}
+# Fine-Gray model for death, with transplant as a competing event
+lm_cov |>
+  fit_landmark(~ age + log_bili + albumin + edema, 
+               model = "finegray", cause = 2) |>
+  summary() |>
+  dplyr::select(.landmark, term, estimate, conf.low, conf.high, .fit_status) |> 
+  head()
+```

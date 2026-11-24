@@ -24,6 +24,8 @@ Config/roxygen2/version: 8.1.1
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Suggests: 
+    cmprsk,
+    splines,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 URL: https://thatoneguy006.github.io/tidylandmark/, https://github.com/thatoneguy006/tidylandmark
@@ -37,6 +39,7 @@ Imports:
     lme4,
     purrr (>= 1.0.0),
     rlang (>= 1.1.0),
+    survival (>= 3.5-0),
     tibble (>= 3.2.0),
     tidyselect (>= 1.2.0)
 LazyData: true
