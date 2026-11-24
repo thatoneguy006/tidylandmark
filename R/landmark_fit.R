@@ -90,7 +90,7 @@ tidy.landmark_fit <- function(x,
     cli::cli_inform(
       c(
         "i" = "Standard errors treat LME-derived covariates as known, so they understate uncertainty.",
-        " " = "Bootstrap intervals that account for this are planned for a future release."
+        " " = "Use {.fn bootstrap_landmark} for intervals that account for this."
       ),
       .frequency = "once",
       .frequency_id = "tidylandmark_lme_se"

@@ -2,7 +2,7 @@
 % Please edit documentation in R/bootstrap_landmark.R
 \name{bootstrap_landmark}
 \alias{bootstrap_landmark}
-\title{Two-stage bootstrap procedure for propagating uncertainty from LME predictions}
+\title{Two-stage bootstrap for propagating uncertainty from LME predictions}
 \usage{
 bootstrap_landmark(
   baseline,
@@ -10,74 +10,115 @@ bootstrap_landmark(
   n_boot = 200,
   exponentiate = FALSE,
   conf.level = 0.95,
-  alternative = "two.sided"
+  alternative = c("two.sided", "greater", "less"),
+  progress = getOption("tidylandmark.progress", interactive())
 )
 }
 \arguments{
 \item{baseline}{A \code{landmark_tbl}, as returned by \code{\link[=landmark_data]{landmark_data()}}.}
 
-\item{pipeline}{A function accepting exactly one argument, the \code{baseline}
-parameter. This function should define the rest of the landmark workflow,
-including calls to \code{\link[=add_landmark_covariates]{add_landmark_covariates()}} and \code{\link[=fit_landmark]{fit_landmark()}} with
-the resulting output being a \code{landmark_fit} object.}
+\item{pipeline}{A function of one argument, a \code{landmark_tbl}, that runs the
+rest of the workflow (e.g. \code{\link[=add_landmark_covariates]{add_landmark_covariates()}} then
+\code{\link[=fit_landmark]{fit_landmark()}}) and returns a \code{landmark_fit}.}
 
-\item{n_boot}{Number of bootstrap samples to take.}
+\item{n_boot}{Number of bootstrap replicates. Default \code{200}.}
 
-\item{exponentiate}{f \code{TRUE}, report hazard ratios (subdistribution hazard
+\item{exponentiate}{If \code{TRUE}, report hazard ratios (subdistribution hazard
 ratios for Fine-Gray models) instead of log hazard ratios.}
 
-\item{conf.level}{Confidence level for the interval. Default \code{0.95}.}
+\item{conf.level}{Confidence level for the intervals. Default \code{0.95}.}
 
-\item{alternative}{Alternative hypothesis for bootstrap p-values. One of:
-"two.sided" (default), "greater", or "less".}
+\item{alternative}{Alternative hypothesis for the bootstrap p-values: one of
+\code{"two.sided"} (default), \code{"greater"} or \code{"less"}.}
+
+\item{progress}{Show a progress bar over replicates? Defaults to the
+\code{tidylandmark.progress} option, or \code{\link[=interactive]{interactive()}} if it is unset.}
 }
 \value{
-A tibble structured similarly to the output of
-\code{\link[=tidy.landmark_fit]{tidy.landmark_fit()}}. Estimates from the complete data are stored in
-columns with "__full" appended while bootstrap estimates have suffix
-"__boot". Estimates and diagnostics at the bootstrap-sample level are stored
-as lists.
+A tibble with one row per landmark and term of the full-data fit:
+\itemize{
+\item \code{.landmark}, \code{.model}, \code{.cause}, \code{origin}, \code{term}: as in
+\code{\link[=tidy.landmark_fit]{tidy.landmark_fit()}}.
+\item \code{estimate__full}, \code{conf.low__full}, \code{conf.high__full},
+\code{p.value__full}: the full-data fit with model-based (Wald) inference.
+\item \code{estimate__boot}, \code{conf.low__boot}, \code{conf.high__boot},
+\code{p.value__boot}: median, percentile interval and percentile p-value of
+the bootstrap distribution.
+\item \code{n_boot_ok}: replicates with an estimate for this term.
+\item \code{.fit_status__full}, \code{.message__full}: fit status of the full-data fit.
+\item \code{.estimates__boot}: one estimate per replicate, in draw order.
+\item \code{.fit_status__boot}, \code{.message__boot}: list-columns with the fit status
+and message for the same replicate, landmark and term.
+}
 }
 \description{
-\code{bootstrap_landmark()} performs a subject-level bootstrap of the complete
-landmark modeling workflow. For each bootstrap sample, landmark risk sets are
-re-sampled, longitudinal mixed-effects models are refit, predictions at each
-landmark time are regenerated, and landmark survival models are refit using
-the updated predictions.
+\code{bootstrap_landmark()} bootstraps the complete landmark workflow. In each
+replicate, the risk set at every landmark is resampled with replacement,
+the user's \code{pipeline} is re-run on the resampled data (refitting any
+longitudinal mixed-effects models, regenerating their predictions at each
+landmark and refitting the landmark survival models), and the coefficients
+are collected.
 
-The resulting bootstrap distribution is used to quantify uncertainty arising
-from estimation of the longitudinal trajectory and its propagation into the
-landmark survival model. Bootstrap parameter estimates are presented as the
-median of the bootstrap sample distribution and percentile confidence
-intervals and bootstrap p-values are additionally reported.
+The bootstrap distribution quantifies uncertainty from estimating the
+longitudinal trajectories and its propagation into the landmark survival
+models, which the standard errors from \code{\link[=fit_landmark]{fit_landmark()}} ignore. Results are
+reported as percentile confidence intervals, percentile bootstrap p-values
+and the median of the bootstrap distribution, next to the full-data fit.
+}
+\details{
+\subsection{Resampling}{
 
-This approach is particularly useful when landmark covariates are derived
-from predicted values obtained from mixed-effects models, where standard
-errors from the survival model alone do not account for uncertainty in the
-first-stage prediction process.
+Rows are resampled independently within each landmark, which matches
+\code{\link[=fit_landmark]{fit_landmark()}} fitting one independent model per landmark and
+\code{\link[=add_landmark_covariates]{add_landmark_covariates()}} fitting one mixed model per landmark from that
+landmark's risk set. The bootstrap therefore supports per-landmark
+inference, but not comparisons between landmarks. A subject drawn more than
+once is treated as distinct subjects, each with its own random effects in
+the mixed models.
+
+Risk sets are read from the rows of \code{baseline} as they are now, so a
+\code{landmark_tbl} filtered after \code{\link[=landmark_data]{landmark_data()}} is resampled as filtered.
+Create any LME predictors used by the survival model inside \code{pipeline} so
+their mixed models are refitted on each draw. For spline coefficients, set
+the interior and boundary knots before resampling and pass them to the
+spline function. The bootstrap checks the fitted basis at each landmark.
+}
+
+\subsection{Failed replicates}{
+
+Each replicate runs quietly: progress bars (when \code{pipeline} uses the default
+\code{progress}), messages and warnings are suppressed, and a replicate whose
+\code{pipeline} errors is recorded as \code{"failed"} at every landmark instead of
+stopping the bootstrap. \code{n_boot_ok} gives the number of replicates with an
+estimate for each term; summaries use only those. Check
+\code{.fit_status__boot} when \code{n_boot_ok} is well below \code{n_boot}. An unavailable
+coefficient (for example, a comparison to an absent factor level) has an
+\code{NA} estimate in that draw. Intervals and p-values require at least two
+usable estimates.
+}
+
+\subsection{Reproducibility and p-values}{
+
+Results depend on the random number generator; call \code{\link[=set.seed]{set.seed()}} first for
+reproducible results. A zero p-value means that no usable draw fell in the
+relevant tail. Its Monte Carlo precision depends on \code{n_boot_ok}.
+}
 }
 \examples{
+\donttest{
 # PBC: status 0 = censored, 1 = transplant, 2 = death
+set.seed(2026)
 pbcseq_baseline |>
-
-  # Set up baseline landmark dataset with landmark_data()
   landmark_data(id, futime, status, landmarks = c(365, 730), horizon = 1825) |>
-
-  # Pipe to bootstrap function
   bootstrap_landmark(
-
-    # Continue landmark procedure pipeline
-    pipeline = \(data){
+    pipeline = \(data) {
       data |>
         add_landmark_covariates(pbcseq_visits, id, day, lme = c(bili, albumin)) |>
         fit_landmark(~ age + log(bili) + albumin, cause = 2)
     },
-
-    n_boot = 200,
-    exponentiate = FALSE,
-    conf.level = 0.95,
-    alternative = 'two.sided'
+    n_boot = 50
   )
+}
 }
 \seealso{
 \code{\link[=landmark_data]{landmark_data()}}, \code{\link[=add_landmark_covariates]{add_landmark_covariates()}}, \code{\link[=fit_landmark]{fit_landmark()}},

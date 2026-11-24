@@ -160,8 +160,6 @@ landmark_data <- function(data,
 
   n_eligible <- purrr::map_int(risk_set_list, nrow) |> rlang::set_names(landmarks)
 
-  id_list <- purrr::map(risk_set_list, \(x){x$.id}) |> rlang::set_names(landmarks)
-
   empty <- landmarks[n_eligible == 0L]
   if (length(empty) > 0L) {
     cli::cli_warn(
@@ -200,8 +198,7 @@ landmark_data <- function(data,
     status_labels = status_info$labels,
     event_codes   = status_info$event_codes,
     n_subjects    = nrow(data),
-    n_eligible    = n_eligible,
-    id_list       = id_list
+    n_eligible    = n_eligible
   )
 
   new_landmark_tbl(out, config = config)

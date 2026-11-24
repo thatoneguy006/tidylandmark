@@ -12,6 +12,10 @@ mixed-effects model fitted separately for each variable and landmark, with
 options in `lme_args` (random slope, adjustment terms, `lmerControl()`).
 - Implemented `fit_landmark()`, which fits an independent Cox, cause-specific,
 or Fine-Gray model at each landmark. 
+- Implemented `bootstrap_landmark()`, which resamples each landmark's risk set,
+re-runs a user-supplied pipeline (mixed models, predictions and survival
+models) on every replicate, and reports percentile intervals and p-values that
+account for uncertainty in LME-derived covariates.
 
 ## Minor Changes
 
